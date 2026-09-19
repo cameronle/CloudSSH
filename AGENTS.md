@@ -378,7 +378,7 @@ release: 发布 vX.Y.Z <主题>版本（如 `release: 发布 v1.10.2 工作流�
 
 | 环境 | Worker 名称 | Git 分支 | 域名 |
 | ------ | ------------ | ------ | ------ |
-| Production | `cloudssh` | `main` | `cloudssh.865455.xyz` + Cloudflare Access |
+| Production | `cloudssh` | `production` | `cloudssh.865455.xyz` + Cloudflare Access |
 
 `workers_dev` 已关闭，公网入口使用独立自定义域名。Cloudflare Access 只允许管理员邮箱 `edgessh@865455.xyz`，One-time PIN 由 Cloudflare Access 处理。
 
@@ -390,7 +390,7 @@ Cloudflare Workers Builds 连接到用户 Fork：
 
 ```text
 Repository: cameronle/CloudSSH
-Production branch: main
+Production branch: production
 Build command: pnpm run build:frontend
 Deploy command: pnpm exec wrangler deploy
 ```
