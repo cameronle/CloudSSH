@@ -372,61 +372,46 @@ release: 发布 vX.Y.Z <主题>版本（如 `release: 发布 v1.10.2 工作流�
 
 ## Deployment Notes
 
-### 双环境部署
+### 当前部署
 
-项目支持 production 和 test 两个独立环境同时运行在 Cloudflare 上：
+本 Fork 当前只部署 production 环境：
 
-| 环境 | Worker 名称 | 分支 | 域名 |
+| 环境 | Worker 名称 | Git 分支 | 域名 |
 | ------ | ------------ | ------ | ------ |
-| Production | `cloudssh` | `main` | `<name>.workers.dev` + 自定义域名 |
-| Test | `cloudssh-test` | `test` | `<name>-test.workers.dev` + 自定义域名 |
+| Production | `cloudssh` | `main` | `cloudssh.865455.xyz` + Cloudflare Access |
 
-两个环境的 Durable Objects（SSHSessionDO、UserDBDO、SSHShareDO）数据完全隔离。
+`workers_dev` 已关闭，公网入口使用独立自定义域名。Cloudflare Access 只允许管理员邮箱 `edgessh@865455.xyz`，One-time PIN 由 Cloudflare Access 处理。
+
+Durable Objects（SSHSessionDO、UserDBDO、SSHShareDO）均属于 `cloudssh` production Worker。当前未创建 test Worker 或 test 数据环境。
 
 ### 部署方式
 
-**方式一：Cloudflare Dashboard（推荐）**
+Cloudflare Workers Builds 连接到用户 Fork：
 
-1. 构建前端：`pnpm run build:frontend`
-2. 进入 Cloudflare Dashboard → Workers
-3. 创建/选择 worker（production 用 `cloudssh`，test 用 `cloudssh-test`）
-4. 上传构建产物或通过 Git 集成自动部署
-5. 在 Settings → Variables 中配置环境变量和 DO 绑定
-6. 如需自定义域名，在 Settings → Domains & Routes 中绑定
-
-**方式二：Wrangler CLI**
-
-```bash
-pnpm run deploy          # 部署 production
-pnpm run deploy:test     # 部署 test 环境
+```text
+Repository: cameronle/CloudSSH
+Production branch: main
+Build command: pnpm run build:frontend
+Deploy command: pnpm exec wrangler deploy
 ```
 
-**方式三：GitHub Actions（CI/CD）**
-
-- `test` 分支 push → 自动部署到 `cloudssh-test`
-- `main` 分支 push → 自动部署到 `cloudssh`
-- `docs/**` 变更 → 发布 GitHub Pages 主题编辑器（`github-pages.yml`）
-- Fork 定时同步上游 `main`（`sync-upstream.yml`，默认关闭，由 `AUTO_SYNC_UPSTREAM` 仓库变量开启）
-
-> 部署门禁（`deploy.yml`）依次执行：冻结锁文件安装 → Playwright 浏览器安装 → `typecheck` → `test` → `build:frontend` → `test:e2e` → 按分支部署；任一环节失败即阻断部署。
+Worker 的部署 trigger、GitHub repository connection、Build Token 和 runtime Secrets 均在 Cloudflare 侧管理。GitHub 仓库不保存 Cloudflare 生产 Token。
 
 ### 自定义域名
 
-`wrangler.toml` 中不硬编码自定义域名（开源项目，每人域名不同）。默认使用 Cloudflare 提供的 `workers.dev` 域名。如需绑定自定义域名：
-
-- 在 Cloudflare Dashboard → Workers → 你的 Worker → Settings → Domains & Routes 中添加
-- 或在 `wrangler.toml` 中添加 `[[routes]]` 配置（仅本地使用，勿提交到仓库）
+`cloudssh.865455.xyz` 通过 Cloudflare Worker Custom Domain 绑定到 `cloudssh`。不要把用户域名写入上游仓库；本 Fork 的部署配置由 Cloudflare 资源和本地受控配置共同决定。
 
 ### Secrets 配置
 
 通过 Cloudflare Dashboard 或 wrangler CLI 设置：
 
-- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` - GitHub OAuth
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` - GitHub OAuth（可选）
 - `GITHUB_ALLOWED_USER_IDS` - 可选，逗号分隔的 GitHub 数字用户 ID 白名单
 - `REQUIRE_GITHUB_AUTH` - 可选，设为 `true` 时禁用匿名 SSH 并要求有效 GitHub session
 - `ENABLE_SSH_SHARING` - 可选，设为 `true` 时允许登录用户创建一次性、受审计的 SSH 分享（默认关闭）
 - `TURNSTILE_SECRET` / `TURNSTILE_SITEKEY` - Bot 验证
 - `BASE_URL` - OAuth 回调地址（需与实际域名一致）
+- `IDLE_TIMEOUT` - 当前配置为 `30m`
 
 Dashboard: Workers → 你的 Worker → Settings → Variables → Environment Variables
 CLI: `npx wrangler secret set <SECRET_NAME>`
@@ -435,7 +420,8 @@ CLI: `npx wrangler secret set <SECRET_NAME>`
 
 - 新 Durable Object 类必须通过 `wrangler.toml` 中新的、不可复用的 migration tag 部署；已有环境不得通过删除 Worker 作为常规初始化或迁移方式
 - 只有确认环境中没有需要保留的数据、且明确要重建整个环境时，才可删除 Worker
-- Test 环境 DO 绑定与 production 相同的 class_name，但因 Worker 名称不同，数据完全隔离
+- 当前 CloudSSH 使用 `v1`、`v2` migration tags 初始化三类 Durable Object
+- EdgeSSH 与 CloudSSH 是完全独立的 Worker 和 Durable Object 数据空间，不迁移服务器配置或凭据
 
 ## AI 版本发布与文档维护规范
 
