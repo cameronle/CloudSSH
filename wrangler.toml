@@ -1,10 +1,11 @@
 name = "cloudssh"
 main = "src/worker/index.ts"
 compatibility_date = "2026-07-01"
-workers_dev = true
+workers_dev = false
 
 [vars]
 DEBUG_MODE = "false"
+IDLE_TIMEOUT = "30m"
 
 # 构建监视路径：仅源代码变动时触发重新构建
 [build]
